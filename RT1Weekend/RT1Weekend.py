@@ -10,35 +10,6 @@ vec4 = ti.types.vector(4, float)
 vec3 = ti.types.vector(3, float)
 vec2 = ti.types.vector(2, float)
 
-'''
-geometry data layout:
-// vec7
-struct
-{
-    float type; // 0 sphere 1 AABB 2 XYRect 3 XZRect 4 YZRect
-    union
-    {
-        // sphere
-        struct
-        {
-            vec4; // vec3 center float radius 
-        };
-
-        // AABB
-        struct
-        {
-            vec6; // vec3 min vec3 max
-        };
-
-        // XY/XZ/YZ Rect
-        struct
-        {
-            vec5; // vec2 min vec2 max float axis 
-        };
-    };
-};
-'''
-
 ray = ti.types.struct(center = vec3, dir = vec3)
 sphere = ti.types.struct(center = vec3, radius = float)
 hit_record = ti.types.struct(hit_pos = vec3, normal = vec3)
