@@ -1,3 +1,4 @@
+from bvh import *
 import taichi as ti
 import rtutil
 
@@ -6,12 +7,7 @@ height = 720
 ti.init(arch=ti.gpu)
 camPos = ti.Vector([0, 0, 1])
 
-vec4 = ti.types.vector(4, float)
-vec3 = ti.types.vector(3, float)
-vec2 = ti.types.vector(2, float)
-
 ray = ti.types.struct(center = vec3, dir = vec3)
-sphere = ti.types.struct(center = vec3, radius = float)
 hit_record = ti.types.struct(hit_pos = vec3, normal = vec3)
 
 pixels = vec4.field(shape=(width, height))
