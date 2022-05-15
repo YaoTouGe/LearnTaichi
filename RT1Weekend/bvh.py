@@ -75,7 +75,8 @@ class AABB():
 
 def combine_bbox(l:AABB, r:AABB):
     ret = copy.deepcopy(l)
-    return ret.combine(r)
+    ret.combine(r)
+    return ret
 
 def objcmp_x(l, r):
     if l.center.x < r.center.x:
@@ -174,11 +175,14 @@ class Sphere:
     def bbox(self):
         return AABB(self.origin - self.radius, self.origin + self.radius)
 
+    def transfer(self):
+        return vec7(0, self.origin, self.radius, 0, 0)
+
 class RenderableAABB(AABB):
     def __init__(self, aabb) -> None:
-        super().__init__(aabb)
+        super().__init__(aabb.min, aabb.max)
     def bbox(self):
-        return AABB(super())
+        return AABB(super().min, super().max)
 
 def traversal_fill(geometries: ti.Field, treenodes: ti.Field, bvh :BVHNode):
     # only leaf node's obj is not None
@@ -197,7 +201,30 @@ def traversal_count(bvh: BVHNode):
 
     return l_node + r_node + 1, l_obj + r_obj
 
-def build_bvh():
+def build_bvh_array(bvh, bvh_node_field, node_idx, geometry_field, geo_idx):
+    if bvh == None:
+        return
+
+    bvh_node_data = bvhnode(min=bvh.bbox.min, max=bvh.bbox.max, leftChild=-1, rightChild=-1, geometryIdx=-1)
+    idx = node_idx[0]
+    node_idx[0] += 1
+    
+    if bvh.obj != None:
+        geometry_field[geo_idx[0]] = bvh.obj.transfer()
+        bvh_node_data.geometryIdx = geo_idx[0]
+        geo_idx[0]+=1
+        return
+
+    if bvh.leftChild != None:
+        bvh_node_data.leftChild = node_idx[0]
+        build_bvh_array(bvh.leftChild, bvh_node_field, node_idx, geometry_field, geo_idx)
+
+    if bvh.rightChild != None:
+        bvh_node_data.rightChild = node_idx[0]
+        build_bvh_array(bvh.rightChild, bvh_node_field, node_idx, geometry_field, geo_idx)
+    bvh_node_field[idx] = bvh_node_data
+
+def build_scene_bvh():
     scene_objs = []
 
     scene_objs.append(Sphere(vec3(0, -1, 0), 1))
@@ -206,7 +233,15 @@ def build_bvh():
     bvh = BVHNode(scene_objs)
     node_count, obj_count = traversal_count(bvh)
 
-    print(node_count, obj_count)
+    print("node count: ", node_count, "geometry count: ", obj_count)
+
+    # after counting, build bvh data
+    bvh_field = bvhnode.field(shape=(node_count,))
+    geometry_field = vec7.field(shape=(obj_count,))
+    build_bvh_array(bvh, bvh_field, [0], geometry_field, [0])
+
+    return bvh_field, geometry_field
 
 if __name__ == "__main__":
-    build_bvh()
+    ti.init(arch=ti.gpu)
+    build_scene_bvh()
