@@ -6,15 +6,16 @@ vec4 = ti.types.vector(4, float)
 vec3 = ti.types.vector(3, float)
 vec2 = ti.types.vector(2, float)
 
-ray = ti.types.struct(center = vec3, dir = vec3)
-hit_record = ti.types.struct(hit_pos = vec3, normal = vec3)
-sphere = ti.types.struct(center = vec3, radius=float)
+ray = ti.types.struct(origin = vec3, dir = vec3)
+hit_record = ti.types.struct(hit_pos = vec3, normal = vec3, t = float, material = int, is_front = int)
+sphere = ti.types.struct(center = vec3, radius=float, material=int)
+aabb = ti.types.struct(min=vec3, max=vec3, material=int)
 
 '''
 geometry type layout:
 struct
 {
-    int type; // 0 sphere 1 AABB 2 XYRect 3 XZRect 4 YZRect
+    int type; // 0 sphere 1 AABB 2 XYRect 3 XZRect 4 YZRect 5 Triangle
     int material; // material id in material table
 
     union

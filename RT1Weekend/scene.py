@@ -61,20 +61,20 @@ def fill_bvh_next(bvh_field, cur):
     fill_bvh_next(bvh_field, bvh_data.rightChild)
 
 def build_scene_bvh():
-    colorful.print_header("======building bvh data========")
+    colorful.print_header("======build bvh data========")
     scene_objs = []
 
     mat_table = MaterialTable(10)
     red = Material(MaterialType.SPECULAR, vec3(1, 0, 0), mat_table)
     green = Material(MaterialType.SPECULAR, vec3(0, 1, 0), mat_table)
 
-    scene_objs.append(Sphere(vec3(0, -1, 0), 1, red))
-    scene_objs.append(Sphere(vec3(0, 1, 0), 1, green))
+    scene_objs.append(Sphere(vec3(0, -1, -10), 1, red))
+    scene_objs.append(Sphere(vec3(0, 1, -10), 1, green))
 
     bvh = BVHNode(scene_objs)
     node_count, obj_count = traversal_count(bvh)
 
-    colorful.print_bold(f"node count: {node_count}, geometry count: {obj_count}")
+    colorful.print_bold(f"node count: {node_count}, geometry count: {obj_count}\nflatten bvh data")
 
     # after counting, build bvh data
     bvh_field = bvhnode.field(shape=(node_count,))
