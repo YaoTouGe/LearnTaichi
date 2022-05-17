@@ -18,8 +18,8 @@ class AABB():
         self.center = min + max / 2
 
     def combine(self, other:AABB):
-        self.min = min(self.min, other.min)
-        self.max = max(self.max, other.max)
+        self.min = ti.min(self.min, other.min)
+        self.max = ti.max(self.max, other.max)
         self.center = self.min + self.max / 2
 
 def combine_bbox(l:AABB, r:AABB):

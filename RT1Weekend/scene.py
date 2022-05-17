@@ -65,11 +65,11 @@ def build_scene_bvh():
     scene_objs = []
 
     mat_table = MaterialTable(10)
-    red = Material(MaterialType.SPECULAR, vec3(1, 0, 0), mat_table)
-    green = Material(MaterialType.SPECULAR, vec3(0, 1, 0), mat_table)
+    gray = Material(MaterialType.DIFFUSE, vec3(0.5, 0.5, 0.5), mat_table)
+    green = Material(MaterialType.DIFFUSE, vec3(0.2, 0.5, 0.2), mat_table)
 
-    scene_objs.append(Sphere(vec3(0, -1, -10), 1, red))
-    scene_objs.append(Sphere(vec3(0, 1, -10), 1, green))
+    scene_objs.append(Sphere(vec3(0, -102, -10), 100, gray))
+    scene_objs.append(Sphere(vec3(0, 1, -10), 3, green))
 
     bvh = BVHNode(scene_objs)
     node_count, obj_count = traversal_count(bvh)

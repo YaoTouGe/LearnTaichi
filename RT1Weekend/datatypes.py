@@ -1,6 +1,7 @@
 import taichi as ti
 
 vec9 = ti.types.vector(9, float)
+vec6 = ti.types.vector(6, float)
 vec5 = ti.types.vector(5, float)
 vec4 = ti.types.vector(4, float)
 vec3 = ti.types.vector(3, float)

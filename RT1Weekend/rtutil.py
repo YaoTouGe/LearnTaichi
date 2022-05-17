@@ -10,8 +10,12 @@ def reflect(input_dir, normal):
 @ti.func
 def test_AABB(ray, min, max, t_min:float, t_max:float):
     dir_inv = 1 / ray.dir
-    min_ts = (min - ray.origin) * dir_inv
-    max_ts = (max - ray.origin) * dir_inv
+    t0s = (min - ray.origin) * dir_inv
+    t1s = (max - ray.origin) * dir_inv
+
+    min_ts = ti.min(t0s, t1s)
+    max_ts = ti.max(t0s, t1s)
+
     return ti.max(min_ts.max(),t_min) < ti.min(max_ts.min(), t_max)
 
 @ti.func
@@ -58,32 +62,31 @@ def random_float(min, max):
     return min + ti.random(float) * (max - min + 0.000001)
 
 @ti.func
-def random_in_unit_sphere():
-    dir = vec3(0)
-    while True:
-        x = random_float(-1, 1)
-        y = random_float(-1, 1)
-        z = random_float(-1, 1)
+def random_vec3(min, max):
+    return vec3(random_float(min, max), random_float(min, max), random_float(min, max))
 
-        dir = vec3(x, y, z)
-        if dir.dot(dir) <= 1:
-            break
+@ti.func
+def random_in_unit_sphere():
+    dir = random_vec3(-1, 1)
+    while dir.dot(dir) > 1:
+        dir = random_vec3(-1, 1)
     return dir
 
 @ti.func
 def random_on_unit_sphere():
     return random_in_unit_sphere().normalized()
 
+# TODO: use template to pass argument by reference not working!! why?
 @ti.func
-def material_scatter(r, rec, material_field, scatter_dir:ti.template(), color:ti.template()):
+def material_scatter(r, rec, material_field):
     # TODO: switch material type
     mat = material_field[rec.material]
-    color = mat.color
-
     scatter_dir = rec.normal + random_on_unit_sphere()
 
+    return vec6(scatter_dir, mat.color)
+
 @ti.func
-def ray_color(r, bvh_field, geom_field, material_field, max_depth:int, bg_color):
+def ray_color(r, bvh_field, geom_field, material_field, max_depth, bg_color):
     ret = vec3(1, 1, 1)
 
     depth = 0
@@ -91,16 +94,16 @@ def ray_color(r, bvh_field, geom_field, material_field, max_depth:int, bg_color)
         rec = hit_record(0)
         # intersect bvh
         if not bvh_intersect(r, bvh_field, geom_field, 0.0001, 999999, rec):
-            ret = bg_color
+            ret = ret * bg_color
             break
         
         # material response
-        scattered = vec3(0)
-        attenuation = vec3(0)
-        material_scatter(r, rec, material_field, scattered, attenuation)
+        scatter = material_scatter(r, rec, material_field)
+        #print(scatter)
         # color accumulate
-        ret = ret * attenuation
-        r = ray(origin = rec.hit_pos, dir = scattered)
+        ret = ret * scatter[3:6]
+
+        r = ray(origin = rec.hit_pos, dir = scatter[0:3])
         depth += 1
 
     if depth >= max_depth:
@@ -119,7 +122,7 @@ def bvh_intersect(r, bvh_field, geom_field, t_min, t_max, rec: ti.template()):
         if not test_AABB(r, node.min, node.max, t_min, t_max):
             cur_node = node.next
             continue
-        
+
         # leaf node, intersect with geometry
         if node.geometryIdx != -1:
             local_rec = hit_record(0)
