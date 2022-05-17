@@ -1,5 +1,6 @@
-from material import Material, MaterialTable, MaterialType
+from material import *
 from bvh import *
+import colorful
 
 def traversal_count(bvh: BVHNode):
     if bvh == None:

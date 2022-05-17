@@ -6,6 +6,10 @@ vec4 = ti.types.vector(4, float)
 vec3 = ti.types.vector(3, float)
 vec2 = ti.types.vector(2, float)
 
+ray = ti.types.struct(center = vec3, dir = vec3)
+hit_record = ti.types.struct(hit_pos = vec3, normal = vec3)
+sphere = ti.types.struct(center = vec3, radius=float)
+
 '''
 geometry type layout:
 struct
@@ -30,7 +34,6 @@ struct
 };
 ''' 
 geometry = ti.types.struct(type = int, material = int, data = vec9)
-sphere = ti.types.struct(center = vec3, radius=float)
 
 '''
 material type layout:
@@ -42,3 +45,24 @@ struct
 }
 '''
 material = ti.types.struct(type = int, color = vec3)
+
+'''
+BVH node layout:
+struct
+{
+    // bounding box
+    vec3 min;
+    vec3 max;
+
+    // child node id in node array
+    int leftChild;
+    int rightChild;
+    // geometry id in geometry array
+    int geometryIdx;
+    // next bvh node id for back tracing
+    int next;
+    // parent index
+    int parent
+}
+'''
+bvhnode = ti.types.struct(min = vec3, max = vec3, leftChild = int, rightChild = int, geometryIdx = int, next = int, parent = int)

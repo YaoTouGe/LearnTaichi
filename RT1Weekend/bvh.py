@@ -1,27 +1,4 @@
 from geom import *
-import colorful
-
-'''
-BVH node layout:
-struct
-{
-    // bounding box
-    vec3 min;
-    vec3 max;
-
-    // child node id in node array
-    int leftChild;
-    int rightChild;
-    // geometry id in geometry array
-    int geometryIdx;
-    // next bvh node id for back tracing
-    int next;
-    // parent index
-    int parent
-}
-'''
-
-bvhnode = ti.types.struct(min = vec3, max = vec3, leftChild = int, rightChild = int, geometryIdx = int, next = int, parent = int)
 
 def objcmp_x(l, r):
     if l.center.x < r.center.x:

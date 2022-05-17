@@ -22,7 +22,7 @@ def intersct_sphere(ray, sphere, tMin, tMax, rec: ti.template()):
     c = oc.dot(oc) - sphere.radius * sphere.radius
 
     discriminant = half_b * half_b - a * c
-    ret = False
+    ret = True
     if discriminant < 0:
         ret = False
 

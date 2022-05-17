@@ -8,9 +8,6 @@ height = 720
 ti.init(arch=ti.gpu)
 camPos = ti.Vector([0, 0, 1])
 
-ray = ti.types.struct(center = vec3, dir = vec3)
-hit_record = ti.types.struct(hit_pos = vec3, normal = vec3)
-
 pixels = vec4.field(shape=(width, height))
 
 window = ti.ui.Window("RT1Weekend", (width, height))
@@ -31,7 +28,7 @@ def ray_trace(width:int, height:int):
         dir = (ti.Vector([(x / width - 0.5) * aspect_ratio, y / height - 0.5, 0]) - camPos).normalized()
         r = ray(center=camPos, dir=dir)
 
-        if rtutil.intersct_sphere(r, sphere(center=center, radius=radius), 0.001, 99999, rec) > 0:
+        if rtutil.intersct_sphere(r, sphere(center=center, radius=radius), 0.001, 99999, rec):
             pixels[x, y] = vec4(rec.normal + vec3([0.5, 0.5, 0.5]), 1)
         else:
             pixels[x, y] = ti.Vector([0, 0, 0, 1])
