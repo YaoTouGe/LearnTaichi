@@ -1,7 +1,7 @@
-from bvh import *
 import taichi as ti
+from datatypes import *
 import rtutil
-import bvh
+import scene
 
 width = 1280
 height = 720
@@ -13,8 +13,13 @@ hit_record = ti.types.struct(hit_pos = vec3, normal = vec3)
 
 pixels = vec4.field(shape=(width, height))
 
+window = ti.ui.Window("RT1Weekend", (width, height))
+canvas = window.get_canvas()
+
+bvh_field, geom_field, material_field = scene.build_scene_bvh()
+
 @ti.kernel
-def ray_trace(width:int, height:int, bvh_field, geom_field):
+def ray_trace(width:int, height:int):
     center = ti.Vector([0, 0, -5])
     radius = 2
     aspect_ratio = float(width) / height
@@ -31,12 +36,7 @@ def ray_trace(width:int, height:int, bvh_field, geom_field):
         else:
             pixels[x, y] = ti.Vector([0, 0, 0, 1])
 
-window = ti.ui.Window("RT1Weekend", (width, height))
-canvas = window.get_canvas()
-
-bvh_field, geom_field = bvh.build_scene_bvh()
-
 while window.running:
-    ray_trace(width, height, bvh_field, geom_field)
+    ray_trace(width, height)
     canvas.set_image(pixels)
     window.show()
