@@ -21,6 +21,9 @@ class AABB():
         self.min = ti.min(self.min, other.min)
         self.max = ti.max(self.max, other.max)
         self.center = self.min + self.max / 2
+        
+    def size(self):
+        return self.max - self.min
 
 def combine_bbox(l:AABB, r:AABB):
     ret = copy.deepcopy(l)
@@ -62,15 +65,15 @@ class RectYZ:
         return AABB(vec3(self.x - 0.01, self.y0, self.z0), vec3(self.x + 0.01, self.y1, self.z1))
 
 class Sphere:
-    def __init__(self, origin: vec3, radius: float, material:Material) -> None:
-        self.origin = origin
+    def __init__(self, center: vec3, radius: float, material:Material) -> None:
+        self.center = center
         self.radius = radius
         self.material = material.id()
     def bbox(self):
-        return AABB(self.origin - self.radius, self.origin + self.radius)
+        return AABB(self.center - self.radius, self.center + self.radius)
 
     def transfer(self):
-        return geometry(type=0, material=self.material, data=vec9(self.origin, self.radius, vec5(0)))
+        return geometry(type=0, material=self.material, data=vec9(self.center, self.radius, vec5(0)))
 
 class RenderableAABB(AABB):
     def __init__(self, aabb) -> None:

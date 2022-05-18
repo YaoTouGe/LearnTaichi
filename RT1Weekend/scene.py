@@ -1,3 +1,4 @@
+from random import random, seed
 from material import *
 from bvh import *
 import colorful
@@ -10,7 +11,7 @@ def traversal_count(bvh: BVHNode):
         return 1, 1
 
     l_node, l_obj = traversal_count(bvh.leftChild)
-    r_node, r_obj = traversal_count(bvh.leftChild)
+    r_node, r_obj = traversal_count(bvh.rightChild)
 
     return l_node + r_node + 1, l_obj + r_obj
 
@@ -65,11 +66,28 @@ def build_scene_bvh():
     scene_objs = []
 
     mat_table = MaterialTable(10)
+
     gray = Material(MaterialType.DIFFUSE, vec3(0.5, 0.5, 0.5), mat_table)
     green = Material(MaterialType.DIFFUSE, vec3(0.2, 0.5, 0.2), mat_table)
+    red = Material(MaterialType.DIFFUSE, vec3(0.5, 0.2, 0.2), mat_table)
+    blue = Material(MaterialType.DIFFUSE, vec3(0.2, 0.2, 0.5), mat_table)
 
     scene_objs.append(Sphere(vec3(0, -102, -10), 100, gray))
     scene_objs.append(Sphere(vec3(0, 1, -10), 3, green))
+    seed(450468524)
+    for i in range(500):
+        x = random() * -100 + 50
+        z = random() * -100 - 10
+        y = random() * 4 - 2
+
+        color = random() * 10 // 3
+        mat = green
+        if color > 2 and color < 7:
+            mat = red
+        elif color >= 7:
+            mat = blue
+        scene_objs.append(Sphere(vec3(x, y, z), 2, mat))
+
 
     bvh = BVHNode(scene_objs)
     node_count, obj_count = traversal_count(bvh)

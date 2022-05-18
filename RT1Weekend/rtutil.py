@@ -1,4 +1,3 @@
-from matplotlib.pyplot import draw_if_interactive
 import taichi as ti
 from datatypes import *
 
@@ -33,19 +32,21 @@ def intersect_sphere(r, sphere, t_min:float, t_max:float, rec: ti.template()):
     ret = True
     if discriminant < 0:
         ret = False
-
-    discrimSqrt = ti.sqrt(discriminant)
-    t = (-half_b - discrimSqrt) / a
-    if (t < t_min or t > t_max):
-        t = (-half_b + discrimSqrt) / a
-        if (t < t_min or t > t_max):
-            ret = False
-    
-    rec.hit_pos = r.origin + r.dir * t
-    rec.normal = (rec.hit_pos - sphere.center).normalized()
-    rec.material = sphere.material
-    rec.is_front = rec.normal.dot(r.dir) > 0 
-    rec.t = t
+    else:
+        discrimSqrt = ti.sqrt(discriminant)
+        t = (-half_b - discrimSqrt) / a
+        if t < t_min or t > t_max:
+            t = (-half_b + discrimSqrt) / a
+            if t < t_min or t > t_max:
+                ret = False
+        if ret:
+            rec.hit_pos = r.origin + r.dir * t
+            rec.normal = (rec.hit_pos - sphere.center) / sphere.radius
+            rec.is_front = rec.normal.dot(-r.dir) > 0
+            if not rec.is_front:
+                rec.normal = -rec.normal
+            rec.material = sphere.material
+            rec.t = t
     return ret
 
 @ti.func
@@ -76,38 +77,48 @@ def random_in_unit_sphere():
 def random_on_unit_sphere():
     return random_in_unit_sphere().normalized()
 
+@ti.func
+def approximate_zero(v, epsilon=0.0001):
+    return (ti.abs(v) <= epsilon).any()
+
 # TODO: use template to pass argument by reference not working!! why?
 @ti.func
 def material_scatter(r, rec, material_field):
     # TODO: switch material type
     mat = material_field[rec.material]
     scatter_dir = rec.normal + random_on_unit_sphere()
-
+    if (approximate_zero(scatter_dir)):
+        scatter_dir = rec.normal
     return vec6(scatter_dir, mat.color)
 
 @ti.func
 def ray_color(r, bvh_field, geom_field, material_field, max_depth, bg_color):
-    ret = vec3(1, 1, 1)
-
+    ret = vec3(0, 0, 0)
+    rec = hit_record(0)
     depth = 0
+
     while depth < max_depth:
-        rec = hit_record(0)
         # intersect bvh
-        if not bvh_intersect(r, bvh_field, geom_field, 0.0001, 999999, rec):
-            ret = ret * bg_color
+        if bvh_intersect(r, bvh_field, geom_field, 0.001, 999999, rec):
+            # if not rec.is_front:
+            #     ret = vec3(1, 1, 0)
+            #     break
+            # material response
+            scatter = material_scatter(r, rec, material_field)
+            #print(scatter)
+            # color accumulate
+            #ret = ret * scatter[3:6]
+            # ret = scatter[3:6]
+            # break
+            r = ray(origin = rec.hit_pos, dir = scatter[0:3])
+            depth += 1
+        else:
+            #ret = ret * bg_color
+            ret = bg_color
             break
         
-        # material response
-        scatter = material_scatter(r, rec, material_field)
-        #print(scatter)
-        # color accumulate
-        ret = ret * scatter[3:6]
-
-        r = ray(origin = rec.hit_pos, dir = scatter[0:3])
-        depth += 1
-
-    if depth >= max_depth:
-        ret = vec3(0, 0, 0)
+    # if depth >= max_depth:
+    #     ret = vec3(0, 0, 0)
     
     return vec4(ret, 1)
 
@@ -127,6 +138,8 @@ def bvh_intersect(r, bvh_field, geom_field, t_min, t_max, rec: ti.template()):
         if node.geometryIdx != -1:
             local_rec = hit_record(0)
             if intersect_geom(r, geom_field[node.geometryIdx], t_min, t_max, local_rec):
+                # if not local_rec.is_front:
+                #     print(local_rec.normal, local_rec.hit_pos)
                 ret = True
                 if local_rec.t < t_max:
                     rec = local_rec
