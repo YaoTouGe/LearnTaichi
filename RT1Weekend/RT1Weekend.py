@@ -1,3 +1,4 @@
+from distutils.log import debug
 import taichi as ti
 from datatypes import *
 import rtutil
@@ -11,8 +12,8 @@ class FrameState:
 width = 1280
 height = 720
 
-ti.aot.start_recording("rt.yml")
-ti.init(arch=ti.cc)
+# ti.aot.start_recording("rt.yml")
+ti.init(arch=ti.gpu)
 camPos = ti.Vector([0, 0, 1])
 frame_state = FrameState(10)
 pixels = vec4.field(shape=(width, height))
@@ -27,9 +28,11 @@ def ray_trace(width:int, height:int, prev_count:int, frame_count_inv:float, max_
     aspect_ratio = float(width) / height
 
     for i in range(width * height):
-        
-        x = i % width + ti.random(float)
-        y = i // width + ti.random(float)
+        px = i % width
+        py = i // width
+
+        x = px + ti.random(float)
+        y = py + ti.random(float)
 
         dir = (ti.Vector([(x / width - 0.5) * aspect_ratio, y / height - 0.5, 0]) - camPos).normalized()
         r = ray(origin=camPos, dir=dir)
@@ -39,7 +42,7 @@ def ray_trace(width:int, height:int, prev_count:int, frame_count_inv:float, max_
         bg_color = (1.0-t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0)
 
         new_sample = rtutil.ray_color(r, bvh_field, geom_field, material_field, max_depth, bg_color)
-        pixels[x, y] = (pixels[x, y] * prev_count + new_sample) * frame_count_inv
+        pixels[px, py] = (pixels[px, py] * prev_count + new_sample) * frame_count_inv
 
 def clear(frame_state):
     frame_state.frame_count = 0

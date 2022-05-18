@@ -67,26 +67,24 @@ def build_scene_bvh():
 
     mat_table = MaterialTable(10)
 
-    gray = Material(MaterialType.DIFFUSE, vec3(0.5, 0.5, 0.5), mat_table)
+    gray = Material(MaterialType.DIFFUSE, vec3(0.7, 0.7, 0.7), mat_table)
     green = Material(MaterialType.DIFFUSE, vec3(0.2, 0.5, 0.2), mat_table)
     red = Material(MaterialType.DIFFUSE, vec3(0.5, 0.2, 0.2), mat_table)
     blue = Material(MaterialType.DIFFUSE, vec3(0.2, 0.2, 0.5), mat_table)
 
-    scene_objs.append(Sphere(vec3(0, -102, -10), 100, gray))
-    scene_objs.append(Sphere(vec3(0, 1, -10), 3, green))
+    scene_objs.append(Sphere(vec3(0, -202, -10), 200, gray))
+    # scene_objs.append(Sphere(vec3(0, 0, -10), 2, green))
+    
     seed(450468524)
+    color_list = [blue, green, red, gray]
     for i in range(500):
         x = random() * -100 + 50
-        z = random() * -100 - 10
-        y = random() * 4 - 2
+        z = random() * -100
+        y = random() * 6 - 3
 
-        color = random() * 10 // 3
-        mat = green
-        if color > 2 and color < 7:
-            mat = red
-        elif color >= 7:
-            mat = blue
-        scene_objs.append(Sphere(vec3(x, y, z), 2, mat))
+        color = int(random() * 10 // 3)
+        mat = color_list[color]
+        scene_objs.append(Sphere(vec3(x, y, z), 1.5, mat))
 
 
     bvh = BVHNode(scene_objs)

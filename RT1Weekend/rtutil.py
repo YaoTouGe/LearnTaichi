@@ -93,37 +93,32 @@ def material_scatter(r, rec, material_field):
 
 @ti.func
 def ray_color(r, bvh_field, geom_field, material_field, max_depth, bg_color):
-    ret = vec3(0, 0, 0)
+    ret = vec3(1, 1, 1)
     rec = hit_record(0)
     depth = 0
 
     while depth < max_depth:
         # intersect bvh
-        if bvh_intersect(r, bvh_field, geom_field, 0.001, 999999, rec):
-            # if not rec.is_front:
-            #     ret = vec3(1, 1, 0)
-            #     break
+        if bvh_intersect(r, bvh_field, geom_field, 0.001, 99999.9, rec):
             # material response
             scatter = material_scatter(r, rec, material_field)
             #print(scatter)
+
             # color accumulate
-            #ret = ret * scatter[3:6]
-            # ret = scatter[3:6]
-            # break
+            ret = ret * scatter[3:6]
             r = ray(origin = rec.hit_pos, dir = scatter[0:3])
             depth += 1
         else:
-            #ret = ret * bg_color
-            ret = bg_color
+            ret = ret * bg_color
             break
         
-    # if depth >= max_depth:
-    #     ret = vec3(0, 0, 0)
+    if depth >= max_depth:
+        ret = vec3(0, 0, 0)
     
     return vec4(ret, 1)
 
 @ti.func
-def bvh_intersect(r, bvh_field, geom_field, t_min, t_max, rec: ti.template()):
+def bvh_intersect(r, bvh_field, geom_field, t_min: float, t_max: float, rec: ti.template()):
     # start from root node
     ret = False
     cur_node = 0
@@ -138,8 +133,6 @@ def bvh_intersect(r, bvh_field, geom_field, t_min, t_max, rec: ti.template()):
         if node.geometryIdx != -1:
             local_rec = hit_record(0)
             if intersect_geom(r, geom_field[node.geometryIdx], t_min, t_max, local_rec):
-                # if not local_rec.is_front:
-                #     print(local_rec.normal, local_rec.hit_pos)
                 ret = True
                 if local_rec.t < t_max:
                     rec = local_rec
