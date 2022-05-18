@@ -87,8 +87,8 @@ def material_scatter(r, rec, material_field):
     # TODO: switch material type
     mat = material_field[rec.material]
     scatter_dir = rec.normal + random_on_unit_sphere()
-    if (approximate_zero(scatter_dir)):
-        scatter_dir = rec.normal
+    # if (approximate_zero(scatter_dir)):
+    #     scatter_dir = rec.normal
     return vec6(scatter_dir, mat.color)
 
 @ti.func
