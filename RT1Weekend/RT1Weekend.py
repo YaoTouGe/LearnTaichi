@@ -1,7 +1,9 @@
+from enum import IntEnum
 import taichi as ti
 from datatypes import *
 import rtutil
 import scene
+import colorful
 from camera import RTCamera
 
 class FrameState:
@@ -13,7 +15,7 @@ width = 1280
 height = 720
 
 # ti.aot.start_recording("rt.yml")
-ti.init(arch=ti.vulkan)
+ti.init(arch=ti.gpu)
 cam =  RTCamera(2, width, height, ti.Vector([0, 0, 1]), ti.Vector([0, 0, 0]))
 
 frame_state = FrameState(10)
@@ -60,6 +62,58 @@ def clear(frame_state):
     frame_state.frame_count = 0
     pixels.fill(0)
 
+class GestureState(IntEnum):
+        INIT = 0
+        RECOGNIZING = 1
+        DRAGING = 1 << 1
+
+        '''
+        final states, will be reset after consumed
+        '''
+        CLICK = 1 << 2
+        DOUBLE_CLICK = 1 << 3
+        DRAG_END = 1 << 4
+
+        FINAL_STATES = CLICK | DOUBLE_CLICK | DRAG_END
+
+class MouseGesture:
+    def __init__(self, drag_thresh) -> None:
+        self.start_mouse_pos = None
+        self.last_mouse_pos = None
+        self.state = GestureState.INIT
+        self.drag_thresh = drag_thresh
+
+    def on_left_button_pressed(self, mouse_pos):
+        if self.state != GestureState.INIT:
+            colorful.print_error(f"error gesture state!{self.state.name}")
+        self.state = GestureState.RECOGNIZING
+        self.start_mouse_pos = mouse_pos
+
+    def on_mouse_position(self, mouse_pos):
+        if self.state == GestureState.RECOGNIZING:
+            if ti.abs(mouse_pos - self.start_mouse_pos).max() > self.drag_thresh:
+                self.state = GestureState.DRAGING
+
+        delta = vec2(0)
+        if self.last_mouse_pos != None:
+            delta = mouse_pos - self.last_mouse_pos
+        self.last_mouse_pos = mouse_pos
+
+        return delta
+
+    def on_left_button_released(self, mouse_pos):
+        if self.state == GestureState.RECOGNIZING:
+            self.state = GestureState.CLICK
+        elif self.state == GestureState.DRAGING:
+            self.state = GestureState.DRAG_END
+
+    def consume_state(self):
+        if self.state & GestureState.FINAL_STATES:
+            self.state = GestureState.INIT
+        return self.state
+
+gesture = MouseGesture(2)
+
 while window.running:
     window.GUI.begin("info", 0, 0, 0.2, 0.2)
     window.GUI.text(f"frame count: {frame_state.frame_count}")
@@ -68,6 +122,10 @@ while window.running:
     # new_value = window.GUI.slider_float(name, old_value, min_value, max_value)
     # new_color = window.GUI.color_edit_3(name, old_color)
     window.GUI.end()
+
+    mouse_pos = window.get_cursor_pos()
+    mouse_pos_px = vec2(mouse_pos[0] * width, mouse_pos[1] * height)
+    gesture.on_mouse_position(mouse_pos_px)
 
     if window.get_event(ti.ui.PRESS):
         if window.event.key in [ti.ui.UP, ti.ui.DOWN, ti.ui.LEFT, ti.ui.RIGHT, 'a', 'd', 'w', 's']:
@@ -81,14 +139,33 @@ while window.running:
             cam.focal_len -= 0.1
         elif window.event.key == ti.ui.RIGHT:
             cam.focal_len += 0.1
-        elif window.event.key == 'a':
-            cam.move(vec2(-0.1, 0))
-        elif window.event.key == 'd':
-            cam.move(vec2(0.1, 0))
-        elif window.event.key == 'w':
-            cam.move(vec2(0, 0.1))
-        elif window.event.key == 's':
-            cam.move(vec2(0, -0.1))
+
+        if window.event.key == ti.ui.LMB:
+            gesture.on_left_button_pressed(mouse_pos_px)
+
+    if window.get_event(ti.ui.RELEASE):
+        if window.event.key == ti.ui.LMB:
+            gesture.on_left_button_released(mouse_pos_px)
+
+    # print(gesture.state.name)
+
+    state = gesture.consume_state()
+    if state == GestureState.DRAGING:
+        cam.on_drag(gesture.start_mouse_pos, mouse_pos_px)
+        clear(frame_state)
+
+    if window.is_pressed('a'):
+        cam.move(vec2(-0.1, 0))
+        clear(frame_state)
+    if window.is_pressed('d'):
+        cam.move(vec2(0.1, 0))
+        clear(frame_state)
+    if window.is_pressed('w'):
+        cam.move(vec2(0, 0.1))
+        clear(frame_state)
+    if window.is_pressed('s'):
+        cam.move(vec2(0, -0.1))
+        clear(frame_state)
 
     ray_trace(width, height, frame_state.frame_count, 1 / (frame_state.frame_count + 1), frame_state.max_depth, cam.dump())
     canvas.set_image(pixels)

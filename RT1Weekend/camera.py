@@ -35,3 +35,6 @@ class RTCamera:
 
     def dump(self):
         return vec13(self.focal_len, self.cam_pos, self.forward, self.right, self.up)
+
+    def on_drag(self, move:vec2):
+        pass
