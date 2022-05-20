@@ -1,5 +1,6 @@
 import taichi as ti
 from datatypes import *
+from material import MaterialType
 
 @ti.func
 def reflect(input_dir, normal):
@@ -86,7 +87,11 @@ def approximate_zero(v, epsilon=0.0001):
 def material_scatter(r, rec, material_field):
     # TODO: switch material type
     mat = material_field[rec.material]
-    scatter_dir = rec.normal + random_on_unit_sphere()
+    scatter_dir = vec3(0)
+    if mat.type == MaterialType.DIFFUSE:
+        scatter_dir = rec.normal + random_on_unit_sphere()
+    elif mat.type == MaterialType.SPECULAR:
+        scatter_dir = reflect(-r.dir.normalized(), rec.normal)
     # if (approximate_zero(scatter_dir)):
     #     scatter_dir = rec.normal
     return vec6(scatter_dir, mat.color)

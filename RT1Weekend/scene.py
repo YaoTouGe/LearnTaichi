@@ -71,19 +71,20 @@ def build_scene_bvh():
     green = Material(MaterialType.DIFFUSE, vec3(0.2, 0.5, 0.2), mat_table)
     red = Material(MaterialType.DIFFUSE, vec3(0.5, 0.2, 0.2), mat_table)
     blue = Material(MaterialType.DIFFUSE, vec3(0.2, 0.2, 0.5), mat_table)
+    mirror = Material(MaterialType.SPECULAR, vec3(0.8, 0.5, 0.5), mat_table)
 
     scene_objs.append(Sphere(vec3(0, -202, -10), 200, gray))
     # scene_objs.append(Sphere(vec3(0, 0, -10), 2, green))
     
     seed(450468524)
-    color_list = [blue, green, red, gray]
+    mat_list = [blue, green, red, gray, mirror]
     for i in range(500):
         x = random() * -100 + 50
         z = random() * -100
         y = random() * 6 - 3
 
-        color = int(random() * 10 // 3)
-        mat = color_list[color]
+        idx = int(random() * 4.99)
+        mat = mat_list[idx]
         scene_objs.append(Sphere(vec3(x, y, z), 1.5, mat))
 
 
