@@ -16,7 +16,7 @@ height = 720
 
 # ti.aot.start_recording("rt.yml")
 ti.init(arch=ti.gpu)
-cam =  RTCamera(2, width, height, ti.Vector([0, 0, 1]), ti.Vector([0, 0, 0]))
+cam =  RTCamera(2, width, height, ti.Vector([0, 0, 1]), ti.Vector([0, 0, 0]), 0.5)
 
 frame_state = FrameState(10)
 pixels = vec4.field(shape=(width, height))
@@ -154,12 +154,12 @@ while window.running:
     state = gesture.consume_state()
     # print(state.name)
     if state == GestureState.DRAG_START:
-        cam.on_drag_begin(mouse_pos_px / height)
+        cam.on_drag_begin(mouse_pos_px)
     elif state == GestureState.DRAGING:
-        cam.on_drag(delta / height)
+        cam.on_drag(mouse_pos_px)
         clear(frame_state)
     elif state == GestureState.DRAG_END:
-        cam.on_drag_end(mouse_pos_px / height)
+        cam.on_drag_end(mouse_pos_px)
 
     if window.is_pressed('a'):
         cam.move(vec2(-0.1, 0))
