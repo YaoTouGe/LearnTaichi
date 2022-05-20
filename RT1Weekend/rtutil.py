@@ -4,7 +4,7 @@ from material import MaterialType
 
 @ti.func
 def reflect(input_dir, normal):
-    out = input_dir.dot(normal) * 2 - input_dir
+    out = input_dir.dot(normal) * 2 * normal - input_dir
     return out.normalized()
 
 @ti.func
