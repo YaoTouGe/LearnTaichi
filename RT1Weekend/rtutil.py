@@ -79,22 +79,45 @@ def random_on_unit_sphere():
     return random_in_unit_sphere().normalized()
 
 @ti.func
+def random_cosine_direction():
+    r1 = ti.random(float)
+    r2 = ti.random(float)
+    z = ti.sqrt(1 - r2)
+    PI = 3.1415926535897
+    r2Sqrt = ti.sqrt(r2)
+    phi = 2 * PI * r1
+    x = ti.cos(phi) * r2Sqrt
+    y = ti.sin(phi) * r2Sqrt
+
+    return vec3(x, y, z)
+
+@ti.func
 def approximate_zero(v, epsilon=0.0001):
     return (ti.abs(v) <= epsilon).any()
 
-# TODO: use template to pass argument by reference not working!! why?
 @ti.func
-def material_scatter(r, rec, material_field):
+def material_scatter(r, rec, material_field, scatter_dir:ti.template(), attenuation:ti.template()):
     # TODO: switch material type
     mat = material_field[rec.material]
     scatter_dir = vec3(0)
     if mat.type == MaterialType.DIFFUSE:
-        scatter_dir = rec.normal + random_on_unit_sphere()
+        axis0 = vec3(0)
+        axis1 = vec3(0)
+        if ti.abs(rec.normal.x) > 0.5:
+            axis1 = vec3(0, 0, 1).cross(rec.normal).normalized()
+            axis0 = axis1.cross(rec.normal).normalized()
+        else:
+            axis1 = rec.normal.cross(vec3(1, 0, 0)).normalized()
+            axis0 = axis1.cross(rec.normal).normalized()
+
+        local_cosine = random_on_unit_sphere()
+        scatter_dir = local_cosine.x * axis0 + local_cosine.y * axis1 + local_cosine.z * rec.normal
     elif mat.type == MaterialType.SPECULAR:
         scatter_dir = reflect(-r.dir.normalized(), rec.normal)
     # if (approximate_zero(scatter_dir)):
     #     scatter_dir = rec.normal
-    return vec6(scatter_dir, mat.color)
+    attenuation = mat.color
+    return True
 
 @ti.func
 def ray_color(r, bvh_field, geom_field, material_field, max_depth, bg_color):
@@ -106,12 +129,14 @@ def ray_color(r, bvh_field, geom_field, material_field, max_depth, bg_color):
         # intersect bvh
         if bvh_intersect(r, bvh_field, geom_field, 0.001, 99999.9, rec):
             # material response
-            scatter = material_scatter(r, rec, material_field)
+            scatter_dir = vec3(0)
+            att = vec3(0)
+            material_scatter(r, rec, material_field, scatter_dir, att)
             #print(scatter)
 
             # color accumulate
-            ret = ret * scatter[3:6]
-            r = ray(origin = rec.hit_pos, dir = scatter[0:3])
+            ret = ret * att
+            r = ray(origin = rec.hit_pos, dir = scatter_dir)
             depth += 1
         else:
             ret = ret * bg_color
