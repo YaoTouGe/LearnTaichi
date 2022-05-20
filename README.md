@@ -1,1 +1,2 @@
-# 学习Taichi以及物理模拟相关
+# Learn Graphics and Simulation algorithms with Taichi
+* Ray Tracing in One Weekend `in progress`
