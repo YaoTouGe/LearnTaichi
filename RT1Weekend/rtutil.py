@@ -84,17 +84,48 @@ def approximate_zero(v, epsilon=0.0001):
 
 # TODO: use template to pass argument by reference not working!! why?
 @ti.func
-def material_scatter(r, rec, material_field):
-    # TODO: switch material type
+def refract(dir, n, refractionRatio):
+    cosTheta = ti.min(dir.dot(n), 1)
+    outPerp = refractionRatio * (-dir + cosTheta * n)
+    outParallel = -ti.sqrt(ti.abs(1 - outPerp.dot(outPerp))) * n
+    return outPerp + outParallel
+
+@ti.func
+def FresnelSchlick(cosine, refIdx):
+    F0 = (1 - refIdx) / (1 + refIdx)
+    F0 *= F0
+    return F0 + (1 - F0) * ti.pow(1 - cosine, 5)
+
+@ti.func
+def material_scatter(r, rec, material_field, scatter_dir:ti.template(), attenuation:ti.template()):
     mat = material_field[rec.material]
     scatter_dir = vec3(0)
+    attenuation = mat.color
+
+    ret = True
     if mat.type == MaterialType.DIFFUSE:
         scatter_dir = rec.normal + random_on_unit_sphere()
     elif mat.type == MaterialType.SPECULAR:
         scatter_dir = reflect(-r.dir.normalized(), rec.normal)
+    elif mat.type == MaterialType.LIGHT:
+        ret = False
+    elif mat.type == MaterialType.DIELECT:
+        ir = mat.color.x
+        refractionRatio = (1 / ir) if rec.is_front else ir
+        attenuation = vec3(1, 1, 1)
+        unitDirection = -r.dir.normalized()
+        cosTheta = ti.min(unitDirection.dot(rec.normal), 1)
+        sinTheta = ti.sqrt(1 - cosTheta * cosTheta)
+
+        # if full reflection or fresnel reflection
+        if sinTheta * refractionRatio > 1 or FresnelSchlick(cosTheta, refractionRatio) > ti.random(float):
+            scatter_dir = reflect(unitDirection, rec.normal)
+        else:
+            scatter_dir = refract(unitDirection, rec.normal, refractionRatio)
+
     # if (approximate_zero(scatter_dir)):
     #     scatter_dir = rec.normal
-    return vec6(scatter_dir, mat.color)
+    return ret
 
 @ti.func
 def ray_color(r, bvh_field, geom_field, material_field, max_depth, bg_color):
@@ -106,12 +137,16 @@ def ray_color(r, bvh_field, geom_field, material_field, max_depth, bg_color):
         # intersect bvh
         if bvh_intersect(r, bvh_field, geom_field, 0.001, 99999.9, rec):
             # material response
-            scatter = material_scatter(r, rec, material_field)
+            scatter_dir = vec3(0)
+            att = vec3(0)
+            scatter_continue = material_scatter(r, rec, material_field, scatter_dir, att)
             #print(scatter)
 
             # color accumulate
-            ret = ret * scatter[3:6]
-            r = ray(origin = rec.hit_pos, dir = scatter[0:3])
+            ret = ret * att
+            if not scatter_continue:
+                break
+            r = ray(origin = rec.hit_pos, dir = scatter_dir)
             depth += 1
         else:
             ret = ret * bg_color

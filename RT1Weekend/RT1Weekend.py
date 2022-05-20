@@ -15,10 +15,10 @@ width = 1280
 height = 720
 
 # ti.aot.start_recording("rt.yml")
-ti.init(arch=ti.gpu)
+ti.init(arch=ti.vulkan)
 cam =  RTCamera(2, width, height, ti.Vector([0, 0, 1]), ti.Vector([0, 0, 0]), 360 / width)
 
-frame_state = FrameState(10)
+frame_state = FrameState(5)
 pixels = vec4.field(shape=(width, height))
 
 window = ti.ui.Window("RT1Weekend", (width, height))
