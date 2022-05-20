@@ -26,6 +26,9 @@ class RTCamera:
         self.start_axises = None
         self.rotate_scale = rotate_scale
         
+        self.min_y_rotate = None
+        self.max_y_rotate = None
+        
     def update_axises(self):
         if ti.abs(self.forward.y) < 0.9:
             self.up = vec3(0, 1, 0)
@@ -56,20 +59,20 @@ class RTCamera:
     def on_drag_begin(self, mouse_pos):
         self.drag_start_mouse = mouse_pos
         self.start_axises = [copy.deepcopy(self.right), copy.deepcopy(self.up), copy.deepcopy(self.forward)]
+        self.min_y_rotate = -ti.acos(vec3(0, -1, 0).dot(self.forward))
+        self.max_y_rotate = ti.acos(vec3(0, 1, 0).dot(self.forward))
 
     def on_drag(self, mouse_pos):
         move = mouse_pos - self.drag_start_mouse
         if (ti.abs(move) < vec2(0.001, 0.001)).all():
             return
         # print(move)
+        rotate_radian = vec2(math.radians(-move.x * self.rotate_scale), math.radians(move.y * self.rotate_scale))
+        rotate_radian.y = numpy.clip(rotate_radian.y, self.min_y_rotate, self.max_y_rotate)
 
-        move.y = numpy.clip(-move.y, -89, 89)
-        rotate_angle = move * self.rotate_scale
-
-        # print(rotate_angle.y)
-        self.forward = self._rotate(self.start_axises[2], math.radians(-rotate_angle.x), self.start_axises[1])
+        self.forward = self._rotate(self.start_axises[2], rotate_radian.x, self.start_axises[1])
         self.update_axises()
-        self.forward = self._rotate(self.forward, math.radians(-rotate_angle.y), self.right)
+        self.forward = self._rotate(self.forward, rotate_radian.y, self.right)
         self.update_axises()
 
     def on_drag_end(self, mouse_pos):
