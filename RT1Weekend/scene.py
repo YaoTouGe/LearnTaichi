@@ -72,7 +72,7 @@ def build_scene_bvh():
     red = Material(MaterialType.DIFFUSE, vec3(0.5, 0.2, 0.2), mat_table)
     blue = Material(MaterialType.DIFFUSE, vec3(0.2, 0.2, 0.5), mat_table)
     mirror = Material(MaterialType.SPECULAR, vec3(0.8, 0.8, 0.5), mat_table)
-    light = Material(MaterialType.LIGHT, vec3(1, 4, 5), mat_table)
+    light = Material(MaterialType.LIGHT, vec3(4, 4, 4), mat_table)
     dielect = Material(MaterialType.DIELECT, vec3(1.5, 1.5, 1.5), mat_table)
 
     scene_objs.append(Sphere(vec3(0, -202, -10), 200, gray))
@@ -87,7 +87,11 @@ def build_scene_bvh():
 
         idx = int(random() * 6.99)
         mat = mat_list[idx]
-        scene_objs.append(Sphere(vec3(x, y, z), 1.5, mat))
+        r = 1.5
+
+        if mat == light:
+            r = 0.8
+        scene_objs.append(Sphere(vec3(x, y, z), r, mat))
 
 
     bvh = BVHNode(scene_objs)

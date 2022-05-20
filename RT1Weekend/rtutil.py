@@ -128,7 +128,7 @@ def material_scatter(r, rec, material_field, scatter_dir:ti.template(), attenuat
     return ret
 
 @ti.func
-def ray_color(r, bvh_field, geom_field, material_field, max_depth, bg_color):
+def ray_color(r, bvh_field, geom_field, material_field, max_depth):
     ret = vec3(1, 1, 1)
     rec = hit_record(0)
     depth = 0
@@ -148,7 +148,11 @@ def ray_color(r, bvh_field, geom_field, material_field, max_depth, bg_color):
                 break
             r = ray(origin = rec.hit_pos, dir = scatter_dir)
             depth += 1
-        else:
+        else:            
+            # bg color
+            t = 0.5 * (r.dir.y + 1)
+            bg_color = (1.0-t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0)
+
             ret = ret * bg_color
             break
         

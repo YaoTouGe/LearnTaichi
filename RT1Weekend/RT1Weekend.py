@@ -7,9 +7,11 @@ import colorful
 from camera import RTCamera
 
 class FrameState:
-    def __init__(self, max_depth:int) -> None:
+    def __init__(self, max_depth:int, spp:int) -> None:
         self.frame_count = 0
         self.max_depth = max_depth
+        self.spp = spp
+        self.current_spp = 1
 
 width = 1280
 height = 720
@@ -18,7 +20,7 @@ height = 720
 ti.init(arch=ti.vulkan)
 cam =  RTCamera(2, width, height, ti.Vector([0, 0, 1]), ti.Vector([0, 0, 0]), 360 / width)
 
-frame_state = FrameState(5)
+frame_state = FrameState(5, 3)
 pixels = vec4.field(shape=(width, height))
 
 window = ti.ui.Window("RT1Weekend", (width, height))
@@ -41,25 +43,23 @@ def get_ray(cam_param, x, y, width, height):
     return ray(origin=cam_pos, dir=ray_dir)
 
 @ti.kernel
-def ray_trace(width:int, height:int, prev_count:int, frame_count_inv:float, max_depth:int, cam_param:vec13):
+def ray_trace(width:int, height:int, prev_count:int, frame_count_inv:float, max_depth:int, cam_param:vec13, spp:int):
     for i in range(width * height):
         px = i % width
         py = i // width
+        new_avg_sample = vec4(0 ,0 ,0 ,0)
+        for j in range(spp):
+            x = px + ti.random(float)
+            y = py + ti.random(float)
 
-        x = px + ti.random(float)
-        y = py + ti.random(float)
-
-        r = get_ray(cam_param, x, y, width, height)
-
-        # bg color
-        t = 0.5 * (r.dir.y + 1)
-        bg_color = (1.0-t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0)
-
-        new_sample = rtutil.ray_color(r, bvh_field, geom_field, material_field, max_depth, bg_color)
-        pixels[px, py] = (pixels[px, py] * prev_count + new_sample) * frame_count_inv
+            r = get_ray(cam_param, x, y, width, height)
+            new_avg_sample += rtutil.ray_color(r, bvh_field, geom_field, material_field, max_depth)
+        new_avg_sample /=  spp
+        pixels[px, py] = (pixels[px, py] * prev_count + new_avg_sample) * frame_count_inv
 
 def clear(frame_state):
     frame_state.frame_count = 0
+    frame_state.current_spp = 1
     pixels.fill(0)
 
 class GestureState(IntEnum):
@@ -116,12 +116,13 @@ class MouseGesture:
             self.state = GestureState.DRAGING
         return ret
 
-gesture = MouseGesture(2)
+gesture = MouseGesture(0.5)
 
 while window.running:
     window.GUI.begin("info", 0, 0, 0.2, 0.2)
     window.GUI.text(f"frame count: {frame_state.frame_count}")
     window.GUI.text(f"max depth: {frame_state.max_depth}")
+    window.GUI.text(f"spp: {frame_state.spp}")
     # is_clicked = window.GUI.button(name)
     # new_value = window.GUI.slider_float(name, old_value, min_value, max_value)
     # new_color = window.GUI.color_edit_3(name, old_color)
@@ -132,7 +133,7 @@ while window.running:
     delta = gesture.on_mouse_position(mouse_pos_px)
 
     if window.get_event(ti.ui.PRESS):
-        if window.event.key in [ti.ui.UP, ti.ui.DOWN, ti.ui.LEFT, ti.ui.RIGHT, 'a', 'd', 'w', 's']:
+        if window.event.key in [ti.ui.UP, ti.ui.DOWN, ti.ui.LEFT, ti.ui.RIGHT, 'q', 'e']:
             clear(frame_state)
 
         if window.event.key == ti.ui.UP:
@@ -143,6 +144,10 @@ while window.running:
             cam.focal_len -= 0.1
         elif window.event.key == ti.ui.RIGHT:
             cam.focal_len += 0.1
+        elif window.event.key == 'q':
+            frame_state.spp -= 1
+        elif window.event.key == 'e':
+            frame_state.spp += 1
 
         if window.event.key == ti.ui.LMB:
             gesture.on_left_button_pressed(mouse_pos_px)
@@ -174,7 +179,8 @@ while window.running:
         cam.move(vec2(0, -0.1))
         clear(frame_state)
 
-    ray_trace(width, height, frame_state.frame_count, 1 / (frame_state.frame_count + 1), frame_state.max_depth, cam.dump())
+    ray_trace(width, height, frame_state.frame_count, 1 / (frame_state.frame_count + 1), frame_state.max_depth, cam.dump(), frame_state.current_spp)
     canvas.set_image(pixels)
     window.show()
     frame_state.frame_count += 1
+    frame_state.current_spp = frame_state.spp
