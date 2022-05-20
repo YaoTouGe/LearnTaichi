@@ -1,16 +1,16 @@
 import math
-import numpy
-import scipy
+import copy
 import taichi as ti
 from datatypes import *
 from scipy.spatial.transform import Rotation as R
+import numpy
 
 @ti.data_oriented
 class RTCamera:
     '''
         In OpenGL coordinates
     '''
-    def __init__(self, focal_len, width, height, cam_pos, look_at, rotate_speed) -> None:
+    def __init__(self, focal_len, width, height, cam_pos, look_at, rotate_scale) -> None:
         self.focal_len = focal_len
 
         self.width = width
@@ -23,10 +23,8 @@ class RTCamera:
         self.forward = (look_at - cam_pos).normalized()
         self.update_axises()
 
-        self.drag_start_mouse = None
-        self.drag_start_local_mat = None
-        self.drag_start_local_mat_inv = None
-        self.rotate_speed = rotate_speed
+        self.start_axises = None
+        self.rotate_scale = rotate_scale
         
     def update_axises(self):
         if ti.abs(self.forward.y) < 0.9:
@@ -57,10 +55,7 @@ class RTCamera:
 
     def on_drag_begin(self, mouse_pos):
         self.drag_start_mouse = mouse_pos
-
-        start_backward_mat = numpy.matrix([self.right, self.up, self.forward])
-        self.start_forward_mat = start_backward_mat.transpose()
-        self.start_forward_local = numpy.matmul(start_backward_mat, self.forward)
+        self.start_axises = [copy.deepcopy(self.right), copy.deepcopy(self.up), copy.deepcopy(self.forward)]
 
     def on_drag(self, mouse_pos):
         move = mouse_pos - self.drag_start_mouse
@@ -69,12 +64,12 @@ class RTCamera:
         # print(move)
 
         move.y = numpy.clip(-move.y, -89, 89)
-        rotate_angle = move * self.rotate_speed
-        r = R.from_euler('yx', rotate_angle, degrees=True)
-        # rotate in camera local basis
-        temp = r.apply(self.start_forward_local)
-        # transform back to world basis
-        self.forward = ti.Vector(numpy.asarray(numpy.matmul(self.start_forward_mat, temp[0]))[0])
+        rotate_angle = move * self.rotate_scale
+
+        # print(rotate_angle.y)
+        self.forward = self._rotate(self.start_axises[2], math.radians(-rotate_angle.x), self.start_axises[1])
+        self.update_axises()
+        self.forward = self._rotate(self.forward, math.radians(-rotate_angle.y), self.right)
         self.update_axises()
 
     def on_drag_end(self, mouse_pos):
