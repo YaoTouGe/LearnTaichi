@@ -10,17 +10,16 @@ class FrameState:
     def __init__(self, max_depth:int, spp:int) -> None:
         self.frame_count = 0
         self.max_depth = max_depth
-        self.spp = spp
-        self.current_spp = 1
+        self.current_spp = spp
 
 width = 1280
 height = 720
 
 # ti.aot.start_recording("rt.yml")
-ti.init(arch=ti.vulkan)
+ti.init(arch=ti.gpu)
 cam =  RTCamera(2, width, height, ti.Vector([0, 0, 1]), ti.Vector([0, 0, 0]), 360 / width)
 
-frame_state = FrameState(5, 3)
+frame_state = FrameState(5, 1)
 pixels = vec4.field(shape=(width, height))
 
 window = ti.ui.Window("RT1Weekend", (width, height))
@@ -59,7 +58,6 @@ def ray_trace(width:int, height:int, prev_count:int, frame_count_inv:float, max_
 
 def clear(frame_state):
     frame_state.frame_count = 0
-    frame_state.current_spp = 1
     pixels.fill(0)
 
 class GestureState(IntEnum):
@@ -122,7 +120,7 @@ while window.running:
     window.GUI.begin("info", 0, 0, 0.2, 0.2)
     window.GUI.text(f"frame count: {frame_state.frame_count}")
     window.GUI.text(f"max depth: {frame_state.max_depth}")
-    window.GUI.text(f"spp: {frame_state.spp}")
+    window.GUI.text(f"spp: {frame_state.current_spp}")
     # is_clicked = window.GUI.button(name)
     # new_value = window.GUI.slider_float(name, old_value, min_value, max_value)
     # new_color = window.GUI.color_edit_3(name, old_color)
@@ -145,9 +143,9 @@ while window.running:
         elif window.event.key == ti.ui.RIGHT:
             cam.focal_len += 0.1
         elif window.event.key == 'q':
-            frame_state.spp -= 1
+            frame_state.current_spp -= 1
         elif window.event.key == 'e':
-            frame_state.spp += 1
+            frame_state.current_spp += 1
 
         if window.event.key == ti.ui.LMB:
             gesture.on_left_button_pressed(mouse_pos_px)
@@ -183,4 +181,3 @@ while window.running:
     canvas.set_image(pixels)
     window.show()
     frame_state.frame_count += 1
-    frame_state.current_spp = frame_state.spp
