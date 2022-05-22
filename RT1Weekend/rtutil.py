@@ -128,14 +128,15 @@ def material_scatter(r, rec, material_field, scatter_dir:ti.template(), attenuat
     return ret
 
 @ti.func
-def ray_color(r, bvh_field, geom_field, material_field, max_depth):
-    ret = vec3(1, 1, 1)
+def ray_color(r, bvh_field, geom_field, material_field, max_depth, vis_info):
+    color = vec3(1, 1, 1)
     rec = hit_record(0)
     depth = 0
+    traversal_count = 0
 
     while depth < max_depth:
         # intersect bvh
-        if bvh_intersect(r, bvh_field, geom_field, 0.001, 99999.9, rec):
+        if bvh_intersect(r, bvh_field, geom_field, 0.001, 99999.9, rec, traversal_count):
             # material response
             scatter_dir = vec3(0)
             att = vec3(0)
@@ -143,7 +144,7 @@ def ray_color(r, bvh_field, geom_field, material_field, max_depth):
             #print(scatter)
 
             # color accumulate
-            ret = ret * att
+            color = color * att
             if not scatter_continue:
                 break
             r = ray(origin = rec.hit_pos, dir = scatter_dir)
@@ -153,20 +154,37 @@ def ray_color(r, bvh_field, geom_field, material_field, max_depth):
             t = 0.5 * (r.dir.y + 1)
             bg_color = (1.0-t)*vec3(1.0, 1.0, 1.0) + t*vec3(0.5, 0.7, 1.0)
 
-            ret = ret * bg_color
+            color = color * bg_color
             break
         
     if depth >= max_depth:
-        ret = vec3(0, 0, 0)
+        color = vec3(0, 0, 0)
     
-    return vec4(ret, 1)
+    ret = vec4(color, 1)
+    if vis_info[0] == 1:
+        v = depth / float(max_depth)
+        # if v > vis_info[2]:
+        #     ret = vec4(0, 0, 0, 1)
+        # else:
+        #     ret = vec4((v - vis_info[1])/vis_info[3], 0, 0, 1)
+        ret = vec4((v - vis_info[1])/vis_info[3], 0, 0, 1)
+    elif vis_info[0] == 2:
+        v = traversal_count/bvh_field.shape[0]
+        # if v > vis_info[2]:
+        #     ret = vec4(0, 0, 0, 1)
+        # else:
+        #     ret = vec4(0, (v - vis_info[1])/vis_info[3], 0, 1)
+        ret = vec4(0, (v - vis_info[1])/vis_info[3], 0, 1)
+
+    return ret
 
 @ti.func
-def bvh_intersect(r, bvh_field, geom_field, t_min: float, t_max: float, rec: ti.template()):
+def bvh_intersect(r, bvh_field, geom_field, t_min: float, t_max: float, rec: ti.template(), traversal_count:ti.template()):
     # start from root node
     ret = False
     cur_node = 0
     while cur_node >= 0:
+        traversal_count += 1
         node = bvh_field[cur_node]
 
         if not test_AABB(r, node.min, node.max, t_min, t_max):

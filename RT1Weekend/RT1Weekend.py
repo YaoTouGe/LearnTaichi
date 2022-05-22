@@ -5,6 +5,7 @@ import rtutil
 import scene
 import colorful
 from camera import RTCamera
+import copy
 
 class FrameState:
     def __init__(self, max_depth:int, spp:int) -> None:
@@ -26,6 +27,7 @@ window = ti.ui.Window("RT1Weekend", (width, height))
 canvas = window.get_canvas()
 
 bvh_field, geom_field, material_field = scene.build_scene_bvh()
+vis = vec4(0, 0, 1, 1)
 
 @ti.func
 def get_ray(cam_param, x, y, width, height):
@@ -42,7 +44,7 @@ def get_ray(cam_param, x, y, width, height):
     return ray(origin=cam_pos, dir=ray_dir)
 
 @ti.kernel
-def ray_trace(width:int, height:int, prev_count:int, frame_count_inv:float, max_depth:int, cam_param:vec13, spp:int):
+def ray_trace(width:int, height:int, prev_count:int, frame_count_inv:float, max_depth:int, cam_param:vec13, spp:int, vis:vec4):
     for i in range(width * height):
         px = i % width
         py = i // width
@@ -52,7 +54,7 @@ def ray_trace(width:int, height:int, prev_count:int, frame_count_inv:float, max_
             y = py + ti.random(float)
 
             r = get_ray(cam_param, x, y, width, height)
-            new_avg_sample += rtutil.ray_color(r, bvh_field, geom_field, material_field, max_depth)
+            new_avg_sample += rtutil.ray_color(r, bvh_field, geom_field, material_field, max_depth, vis)
         new_avg_sample /=  spp
         pixels[px, py] = (pixels[px, py] * prev_count + new_avg_sample) * frame_count_inv
 
@@ -115,15 +117,20 @@ class MouseGesture:
         return ret
 
 gesture = MouseGesture(0.5)
-
+old_vis = vec4(vis)
 while window.running:
     window.GUI.begin("info", 0, 0, 0.2, 0.2)
     window.GUI.text(f"frame count: {frame_state.frame_count}")
     window.GUI.text(f"max depth: {frame_state.max_depth}")
     window.GUI.text(f"spp: {frame_state.current_spp}")
-    # is_clicked = window.GUI.button(name)
-    # new_value = window.GUI.slider_float(name, old_value, min_value, max_value)
-    # new_color = window.GUI.color_edit_3(name, old_color)
+    vis[1] = window.GUI.slider_float("vis value start",vis[1], 0, 1)
+    vis[2] = window.GUI.slider_float("vis value end", vis[2], vis[1] + 0.01, 1)
+    vis[3] = vis[2] - vis[1]
+
+    if (vis != old_vis).any() != 0:
+    # if vis != old_vis:
+        clear(frame_state)
+        old_vis = copy.deepcopy(vis)
     window.GUI.end()
 
     mouse_pos = window.get_cursor_pos()
@@ -131,7 +138,7 @@ while window.running:
     delta = gesture.on_mouse_position(mouse_pos_px)
 
     if window.get_event(ti.ui.PRESS):
-        if window.event.key in [ti.ui.UP, ti.ui.DOWN, ti.ui.LEFT, ti.ui.RIGHT, 'q', 'e']:
+        if window.event.key in [ti.ui.UP, ti.ui.DOWN, ti.ui.LEFT, ti.ui.RIGHT, 'q', 'e', 'z', 'x', 'c']:
             clear(frame_state)
 
         if window.event.key == ti.ui.UP:
@@ -146,6 +153,12 @@ while window.running:
             frame_state.current_spp -= 1
         elif window.event.key == 'e':
             frame_state.current_spp += 1
+        elif window.event.key == 'z':
+            vis[0] = 0
+        elif window.event.key == 'x':
+            vis[0] = 1
+        elif window.event.key == 'c':
+            vis[0] = 2
 
         if window.event.key == ti.ui.LMB:
             gesture.on_left_button_pressed(mouse_pos_px)
@@ -177,7 +190,7 @@ while window.running:
         cam.move(vec2(0, -0.1))
         clear(frame_state)
 
-    ray_trace(width, height, frame_state.frame_count, 1 / (frame_state.frame_count + 1), frame_state.max_depth, cam.dump(), frame_state.current_spp)
+    ray_trace(width, height, frame_state.frame_count, 1 / (frame_state.frame_count + 1), frame_state.max_depth, cam.dump(), frame_state.current_spp, vis)
     canvas.set_image(pixels)
     window.show()
     frame_state.frame_count += 1
