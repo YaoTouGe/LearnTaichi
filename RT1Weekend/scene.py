@@ -104,7 +104,7 @@ def build_scene_bvh():
     geometry_field = geometry.field(shape=(obj_count,))
     build_bvh_array(bvh, bvh_field, [0], geometry_field, [0], -1)
     fill_bvh_next(bvh_field, 0)
-
+    colorful.print_header("======build bvh finished========")
     return bvh_field, geometry_field, mat_table.data()
 
 if __name__ == "__main__":
