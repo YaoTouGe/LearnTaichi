@@ -62,61 +62,6 @@ def clear(frame_state):
     frame_state.frame_count = 0
     pixels.fill(0)
 
-class GestureState(IntEnum):
-        INIT = 0
-        RECOGNIZING = 1
-        DRAGING = 1 << 1
-
-        DRAG_START = 1 << 2
-        '''
-        final states, will be reset after consumed
-        '''
-        CLICK = 1 << 3
-        DOUBLE_CLICK = 1 << 4
-        DRAG_END = 1 << 5
-
-        FINAL_STATES = CLICK | DOUBLE_CLICK | DRAG_END
-
-class MouseGesture:
-    def __init__(self, drag_thresh) -> None:
-        self.start_mouse_pos = None
-        self.last_mouse_pos = None
-        self.state = GestureState.INIT
-        self.drag_thresh = drag_thresh
-
-    def on_left_button_pressed(self, mouse_pos):
-        if self.state != GestureState.INIT:
-            colorful.print_error(f"error gesture state!{self.state.name}")
-        self.state = GestureState.RECOGNIZING
-        self.start_mouse_pos = mouse_pos
-
-    def on_mouse_position(self, mouse_pos):
-        if self.state == GestureState.RECOGNIZING:
-            if ti.abs(mouse_pos - self.start_mouse_pos).max() > self.drag_thresh:
-                self.state = GestureState.DRAG_START
-
-        delta = vec2(0)
-        if self.last_mouse_pos != None:
-            delta = mouse_pos - self.last_mouse_pos
-        self.last_mouse_pos = mouse_pos
-
-        return delta
-
-    def on_left_button_released(self, mouse_pos):
-        if self.state == GestureState.RECOGNIZING:
-            self.state = GestureState.CLICK
-        elif self.state == GestureState.DRAGING:
-            self.state = GestureState.DRAG_END
-
-    def consume_state(self):
-        ret = self.state
-        if self.state & GestureState.FINAL_STATES:
-            self.state = GestureState.INIT
-        elif self.state == GestureState.DRAG_START:
-            self.state = GestureState.DRAGING
-        return ret
-
-gesture = MouseGesture(0.5)
 old_vis = vec4(vis)
 while window.running:
     window.GUI.begin("info", 0, 0, 0.2, 0.2)
@@ -135,7 +80,9 @@ while window.running:
 
     mouse_pos = window.get_cursor_pos()
     mouse_pos_px = vec2(mouse_pos[0] * width, mouse_pos[1] * height)
-    delta = gesture.on_mouse_position(mouse_pos_px)
+
+    if cam.on_mouse_position(mouse_pos_px):
+        clear(frame_state)
 
     if window.get_event(ti.ui.PRESS):
         if window.event.key in [ti.ui.UP, ti.ui.DOWN, ti.ui.LEFT, ti.ui.RIGHT, 'q', 'e', 'z', 'x', 'c']:
@@ -161,21 +108,11 @@ while window.running:
             vis[0] = 2
 
         if window.event.key == ti.ui.LMB:
-            gesture.on_left_button_pressed(mouse_pos_px)
+            cam.on_left_pressed(mouse_pos_px)
 
     if window.get_event(ti.ui.RELEASE):
         if window.event.key == ti.ui.LMB:
-            gesture.on_left_button_released(mouse_pos_px)
-
-    state = gesture.consume_state()
-    # print(state.name)
-    if state == GestureState.DRAG_START:
-        cam.on_drag_begin(mouse_pos_px)
-    elif state == GestureState.DRAGING:
-        cam.on_drag(mouse_pos_px)
-        clear(frame_state)
-    elif state == GestureState.DRAG_END:
-        cam.on_drag_end(mouse_pos_px)
+            cam.on_left_released(mouse_pos_px)
 
     if window.is_pressed('a'):
         cam.move(vec2(-0.1, 0))
