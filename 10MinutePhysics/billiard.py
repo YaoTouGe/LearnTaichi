@@ -7,14 +7,15 @@ from camera import Camera
 from datatypes import *
 
 ti.init(ti.gpu)
-particle_count = 2
+particle_count = 5000
 
 positions = ti.Vector.field(n=3, dtype=ti.f32, shape=particle_count)
 velocities = ti.Vector.field(n=3, dtype=ti.f32, shape=particle_count)
 delta_t = 1 / 60
-G = vec3(0, -9.8, 0)
+#G = vec3(0, -9.8, 0)
+G = vec3(0, 0, 0)
 mass_inv = 1
-radius = 1
+radius = 0.05
 
 world_size = 3
 box_min = vec3(-world_size, -world_size, -world_size)
@@ -35,38 +36,46 @@ def Simulation():
     for i in range(particle_count):
         velocities[i] = velocities[i] + G * delta_t
 
+    # particle collision
     for i in range(particle_count):
-        # particle collision
-        for j in range(i + 1, particle_count):
-            if i != j:
+        for k in range(5):
+            for j in range(i + 1, particle_count):
                 diff = (positions[i] - positions[j])
-                dist_sqr = diff.dot(diff)
+                dist = ti.sqrt(diff.dot(diff))
                 direction = diff.normalized()
 
-                if dist_sqr <= radius * radius * 4 and dist_sqr > 0:
+                if dist <= 2 * radius and dist > 0:
                     align_v_i = velocities[i].dot(-direction)
-                    ortho_v_i = velocities[i] - align_v_i
+                    ortho_v_i = velocities[i] + align_v_i * direction
 
                     align_v_j = velocities[j].dot(direction)
-                    ortho_v_j = velocities[j] - align_v_j
+                    ortho_v_j = velocities[j] - align_v_j * direction
+                    
+                    # collision equation when mass are the same and full elastic
+                    after_collid_v = (align_v_i + align_v_j) / 2
 
-                    velocities[i] = ortho_v_i - align_v_i
-                    velocities[j] = ortho_v_j - align_v_j
+                    velocities[i] = ortho_v_i + direction * after_collid_v
+                    velocities[j] = ortho_v_j - direction * after_collid_v
+
+                    # correct position
+                    correction = radius - dist / 2
+                    positions[i] += direction * correction
+                    positions[j] -= direction * correction
                     # need position correction?
 
-        # handle boundry collision
-        pos = positions[i]
-        if pos.x > box_max.x or pos.x < box_min.x:
-            velocities[i].x *= -1
-        if pos.y > box_max.y or pos.y < box_min.y:
-            velocities[i].y *= -1
-        if pos.z > box_max.z or pos.z < box_min.z:
-            velocities[i].z *= -1
-        
-        positions[i] = ti.min(box_max - 0.01, positions[i])
-        positions[i] = ti.max(box_min + 0.01, positions[i])
+            # handle boundry collision
+            pos = positions[i]
+            if pos.x > box_max.x - radius or pos.x < box_min.x + radius:
+                velocities[i].x *= -1
+            if pos.y > box_max.y - radius or pos.y < box_min.y + radius:
+                velocities[i].y *= -1
+            if pos.z > box_max.z - radius or pos.z < box_min.z + radius:
+                velocities[i].z *= -1
+            
+            positions[i] = ti.min(box_max - 0.01, positions[i])
+            positions[i] = ti.max(box_min + 0.01, positions[i])
 
-        positions[i] += delta_t * velocities[i]
+            positions[i] += delta_t * velocities[i] / 5
 
 
 FillInit3D()
