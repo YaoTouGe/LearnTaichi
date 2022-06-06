@@ -12,25 +12,26 @@ particle_count = 5000
 positions = ti.Vector.field(n=3, dtype=ti.f32, shape=particle_count)
 velocities = ti.Vector.field(n=3, dtype=ti.f32, shape=particle_count)
 delta_t = 1 / 60
-#G = vec3(0, -9.8, 0)
-G = vec3(0, 0, 0)
+G = vec3(0, -9.8, 0)
+# G = vec3(0, 0, 0)
 mass_inv = 1
 radius = 0.05
+substep_count = 1.0
 
 world_size = 3
 box_min = vec3(-world_size, -world_size, -world_size)
 box_max = vec3(world_size, world_size, world_size)
 
-width = 640
-height = 480
+width = 1280
+height = 720
 
 @ti.kernel
 def FillInit3D():
     for i in positions:
         for k in ti.static(range(3)):
             positions[i][k] = ti.random() * 4 - 2
-            velocities[i][k] = ti.random() * 10 - 5
-
+            velocities[i][k] = ti.random() * 0.5 - 0.25
+        velocities[i][1] = 0
 @ti.kernel
 def Simulation():
     for i in range(particle_count):
@@ -38,7 +39,7 @@ def Simulation():
 
     # particle collision
     for i in range(particle_count):
-        for k in range(5):
+        for k in range(substep_count):
             for j in range(i + 1, particle_count):
                 diff = (positions[i] - positions[j])
                 dist = ti.sqrt(diff.dot(diff))
@@ -51,11 +52,9 @@ def Simulation():
                     align_v_j = velocities[j].dot(direction)
                     ortho_v_j = velocities[j] - align_v_j * direction
                     
-                    # collision equation when mass are the same and full elastic
-                    after_collid_v = (align_v_i + align_v_j) / 2
-
-                    velocities[i] = ortho_v_i + direction * after_collid_v
-                    velocities[j] = ortho_v_j - direction * after_collid_v
+                    # exchange speed when mass are the same and full elastic
+                    velocities[i] = ortho_v_i + direction * align_v_j
+                    velocities[j] = ortho_v_j - direction * align_v_i
 
                     # correct position
                     correction = radius - dist / 2
@@ -72,10 +71,10 @@ def Simulation():
             if pos.z > box_max.z - radius or pos.z < box_min.z + radius:
                 velocities[i].z *= -1
             
-            positions[i] = ti.min(box_max - 0.01, positions[i])
-            positions[i] = ti.max(box_min + 0.01, positions[i])
+            positions[i] = ti.min(box_max - radius, positions[i])
+            positions[i] = ti.max(box_min + radius, positions[i])
 
-            positions[i] += delta_t * velocities[i] / 5
+            positions[i] += delta_t * velocities[i] / substep_count
 
 
 FillInit3D()
